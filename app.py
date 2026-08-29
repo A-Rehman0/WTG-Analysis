@@ -143,11 +143,7 @@ for c in temperature_columns:
 if not temperature_columns:
     st.error("❌ No temperature columns detected.")
     st.stop()
-if df[temperature_columns].dropna(how="all").empty:
-    st.error("❌ All temperature columns are empty/non-numeric after parsing.")
-    with st.expander("Detected columns (debug)"):
-        st.write(list(df.columns))
-    st.stop()
+
 
 min_time, max_time = df[time_column].min(), df[time_column].max()
 c1, c2, c3, c4 = st.columns([1.3, 1.3, 1, 1])
