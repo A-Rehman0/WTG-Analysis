@@ -143,6 +143,11 @@ for c in temperature_columns:
 if not temperature_columns:
     st.error("❌ No temperature columns detected.")
     st.stop()
+if df[temperature_columns].dropna(how="all").empty:
+    st.error("❌ All temperature columns are empty/non-numeric after parsing.")
+    with st.expander("Detected columns (debug)"):
+        st.write(list(df.columns))
+    st.stop()
 
 
 min_time, max_time = df[time_column].min(), df[time_column].max()
@@ -172,8 +177,7 @@ if filtered_df.empty:
     st.warning("No data in the selected time range.")
     st.stop()
 
-with st.expander("🔍 Debug: non-null counts"):
-    st.write(filtered_df[temperature_columns].count())
+
 
 def last_valid(col):
     s = filtered_df[col].dropna()
