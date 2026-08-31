@@ -365,6 +365,8 @@ if active_tab == "🩺 Data & Health":
         sns.despine(ax=ax)
     
     plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
     plt.show()
     # ── DATA INFORMATION ────────────────────────────────────────────────────
     st.markdown('<div class="sh">📋 &nbsp;Data Information</div>', unsafe_allow_html=True)
