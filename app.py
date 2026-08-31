@@ -305,6 +305,65 @@ if active_tab == "🩺 Data & Health":
     else:
         st.info("No valid sensor readings in the selected time range.")
 
+
+    # ──  ────────────────────────────────────────────────────
+    df_plot = pd.DataFrame({
+    "Columns": df.select_dtypes(include="number").columns,
+    "Max": df.select_dtypes(include="number").max().values,
+    "Min": df.select_dtypes(include="number").min().values,
+    "Average": df.select_dtypes(include="number").mean().values
+})
+    fig, axes = plt.subplots(3, 1, figsize=(20, 30))
+
+    stats = ["Max", "Average", "Min"]
+    colors = ["#E76F51", "#2A9D8F", "#457B9D"]
+    
+    for ax, stat, color in zip(axes, stats, colors):
+    
+        temp = df_plot.sort_values(stat, ascending=False)
+    
+        sns.barplot(
+            data=temp,
+            x="Columns",
+            y=stat,
+            color=color,
+            ax=ax
+        )
+    
+        # Show values on top of bars
+        for container in ax.containers:
+            ax.bar_label(
+                container,
+                fmt="%.2f",
+                padding=3,
+                fontsize=15,
+                rotation=90
+            )
+    
+        ax.set_title(
+            f"{stat} Values",
+            fontsize=26,
+            fontweight="bold",
+            pad=15
+        )
+    
+        ax.set_xlabel("Columns", fontsize=12)
+        ax.set_ylabel(stat, fontsize=12)
+    
+        # Rotate column names
+        ax.tick_params(axis="x", rotation=90, labelsize=12)
+    
+        # Grid
+        ax.grid(
+            axis="y",
+            linestyle="--",
+            alpha=0.3
+        )
+    
+        sns.despine(ax=ax)
+    
+    plt.tight_layout()
+    plt.show()
     # ── DATA INFORMATION ────────────────────────────────────────────────────
     st.markdown('<div class="sh">📋 &nbsp;Data Information</div>', unsafe_allow_html=True)
     info1, info2, info3, info4 = st.columns(4)
