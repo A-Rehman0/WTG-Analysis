@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="WTG Condition Monitoring", page_icon="⚡", layout="wide")
 
