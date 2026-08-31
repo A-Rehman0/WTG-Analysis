@@ -5,6 +5,13 @@ import plotly.graph_objects as go
 from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from io import BytesIO
+from datetime import datetime
 
 st.set_page_config(page_title="WTG Condition Monitoring", page_icon="⚡", layout="wide")
 
@@ -394,3 +401,74 @@ if active_tab == "🩺 Data & Health":
         st.dataframe(desc)
     else:
         st.info("Select at least one column to see the summary.")
+    def generate_pdf_report(filtered_df, temperature_columns, selected_name, time_column, latest_row):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.5*cm, bottomMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("TitleC", parent=styles["Title"], fontSize=20, textColor=colors.HexColor("#062e5c"))
+    h2_style = ParagraphStyle("H2", parent=styles["Heading2"], textColor=colors.HexColor("#0d47a1"))
+    elements = []
+
+    elements.append(Paragraph("WTG Condition Monitoring Report", title_style))
+    elements.append(Paragraph(f"WTG: {selected_name} &nbsp;|&nbsp; Generated: {datetime.now().strftime('%d %b %Y %H:%M')}", styles["Normal"]))
+    elements.append(Paragraph(f"Data range: {filtered_df[time_column].min().strftime('%d %b %Y')} – {filtered_df[time_column].max().strftime('%d %b %Y')}", styles["Normal"]))
+    elements.append(Spacer(1, 16))
+
+    # Sensor health table
+    elements.append(Paragraph("Sensor Health Summary", h2_style))
+    table_data = [["Sensor", "Latest (°C)", "Avg (°C)", "Min (°C)", "Max (°C)", "Status"]]
+    for col in temperature_columns:
+        series = filtered_df[col].dropna()
+        if series.empty:
+            continue
+        latest = series.iloc[-1]
+        status, _ = temperature_status(latest)
+        table_data.append([col, f"{latest:.1f}", f"{series.mean():.1f}", f"{series.min():.1f}", f"{series.max():.1f}", status])
+
+    t = Table(table_data, repeatRows=1, colWidths=[6.5*cm, 2*cm, 2*cm, 2*cm, 2*cm, 2.5*cm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d47a1")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#c9d6e8")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f2f6fc")]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 20))
+
+    # Trend chart (matplotlib, embedded as image)
+    elements.append(Paragraph("Temperature Trends", h2_style))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    for col in temperature_columns:
+        s = filtered_df[[time_column, col]].dropna()
+        if not s.empty:
+            ax.plot(s[time_column], s[col], label=col, linewidth=1.2)
+    ax.axhline(75, color="#bf360c", linestyle="--", linewidth=1, label="Warning 75°C")
+    ax.axhline(90, color="#c62828", linestyle="--", linewidth=1, label="High 90°C")
+    ax.set_xlabel("Time"); ax.set_ylabel("Temperature (°C)")
+    ax.legend(fontsize=7, loc="upper left", ncol=2)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+
+    img_buf = BytesIO()
+    fig.savefig(img_buf, format="png", dpi=150)
+    plt.close(fig)
+    img_buf.seek(0)
+    elements.append(RLImage(img_buf, width=17*cm, height=8.5*cm))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+
+        st.markdown('<div class="sh">📄 &nbsp;Report</div>', unsafe_allow_html=True)
+    if st.button("Generate PDF Report"):
+        pdf_buffer = generate_pdf_report(filtered_df, temperature_columns, selected_name, time_column, latest_row)
+        st.download_button(
+            label="⬇️ Download PDF Report",
+            data=pdf_buffer,
+            file_name=f"WTG_Report_{selected_name}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+        )
